@@ -1,42 +1,50 @@
-# In-memory product catalog for CloudCart.
-# No database yet — this is intentional for Phase 3.
-# Postgres will replace this structure in Phase 6 (Docker Compose).
+from db import get_connection
 
-PRODUCTS = [
-    {
-        "id": 1,
-        "name": "Wireless Mouse",
-        "description": "Ergonomic wireless mouse with USB receiver.",
-        "price": 19.99,
-        "stock": 42,
-    },
-    {
-        "id": 2,
-        "name": "Mechanical Keyboard",
-        "description": "Compact 65% mechanical keyboard, hot-swappable switches.",
-        "price": 74.50,
-        "stock": 15,
-    },
-    {
-        "id": 3,
-        "name": "USB-C Hub",
-        "description": "7-in-1 USB-C hub with HDMI, SD card, and 100W passthrough.",
-        "price": 29.99,
-        "stock": 60,
-    },
-    {
-        "id": 4,
-        "name": "Laptop Stand",
-        "description": "Adjustable aluminum laptop stand, foldable.",
-        "price": 34.00,
-        "stock": 25,
-    },
-]
+
+def get_all_products():
+    """Return all products from the database as a list of dicts."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, name, description, price, stock FROM products ORDER BY id;"
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    products = []
+    for row in rows:
+        products.append({
+            "id": row[0],
+            "name": row[1],
+            "description": row[2],
+            "price": float(row[3]),
+            "stock": row[4],
+        })
+    return products
 
 
 def get_product_by_id(product_id):
     """Return a single product dict, or None if not found."""
-    for product in PRODUCTS:
-        if product["id"] == product_id:
-            return product
-    return None
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, name, description, price, stock FROM products WHERE id = %s;",
+                (product_id,)
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        return None
+
+    return {
+        "id": row[0],
+        "name": row[1],
+        "description": row[2],
+        "price": float(row[3]),
+        "stock": row[4],
+    }
