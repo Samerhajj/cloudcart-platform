@@ -1,9 +1,9 @@
+import os
 from flask import Flask, render_template, redirect, url_for, session
 from models import PRODUCTS, get_product_by_id
 
 app = Flask(__name__)
-app.secret_key = "dev-secret-key-change-in-production"
-
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-insecure-fallback")
 @app.route("/")
 def health_check():
     return "CloudCart is running", 200
