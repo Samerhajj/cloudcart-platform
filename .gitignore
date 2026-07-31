@@ -10,3 +10,7 @@ __pycache__/
 .DS_Store
 cookies.txt
 docker/.env
+infra/terraform/terraform.tfvars
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
