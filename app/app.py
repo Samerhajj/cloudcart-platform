@@ -1,16 +1,21 @@
 import os
 from flask import Flask, render_template, redirect, url_for, session
-from models import PRODUCTS, get_product_by_id
+from models import get_all_products, get_product_by_id
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-insecure-fallback")
+
+
 @app.route("/")
 def health_check():
     return "CloudCart is running", 200
 
+
 @app.route("/products")
 def product_list():
-    return render_template("products.html", products=PRODUCTS)
+    products = get_all_products()
+    return render_template("products.html", products=products)
+
 
 @app.route("/product/<int:product_id>")
 def product_detail(product_id):
@@ -18,6 +23,7 @@ def product_detail(product_id):
     if product is None:
         return "Product not found", 404
     return render_template("product_detail.html", product=product)
+
 
 @app.route("/cart/add/<int:product_id>")
 def add_to_cart(product_id):
@@ -31,6 +37,7 @@ def add_to_cart(product_id):
     session["cart"] = cart
 
     return redirect(url_for("view_cart"))
+
 
 @app.route("/cart")
 def view_cart():
@@ -51,10 +58,12 @@ def view_cart():
 
     return render_template("cart.html", items=items, total=total)
 
+
 @app.route("/checkout")
 def checkout():
     session.pop("cart", None)
     return render_template("checkout.html")
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

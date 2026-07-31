@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16
+    container_name: cloudcart-db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - cloudcart-net
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: cloudcart-app
+    environment:
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    networks:
+      - cloudcart-net
+
+volumes:
+  pgdata:
+
+networks:
+  cloudcart-net:
