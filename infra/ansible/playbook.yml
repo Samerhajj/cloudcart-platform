@@ -1,0 +1,8 @@
+---
+- name: Configure CloudCart application server
+  hosts: cloudcart_servers
+  become: yes
+
+  roles:
+    - docker
+    - deploy_app
