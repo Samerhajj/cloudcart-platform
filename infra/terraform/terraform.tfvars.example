@@ -1,0 +1,5 @@
+# Copy this file to terraform.tfvars and fill in your own values.
+# terraform.tfvars is git-ignored and must never be committed.
+
+my_ip         = "YOUR_PUBLIC_IP/32"
+key_pair_name = "your-ec2-keypair-name"
