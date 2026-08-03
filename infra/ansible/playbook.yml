@@ -5,4 +5,5 @@
 
   roles:
     - docker
+    - jenkins
     - deploy_app
