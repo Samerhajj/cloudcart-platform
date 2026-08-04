@@ -34,8 +34,64 @@
     name: jenkins
     state: present
 
+- name: Skip Jenkins setup wizard
+  lineinfile:
+    path: /etc/default/jenkins
+    regexp: '^JAVA_ARGS='
+    line: 'JAVA_ARGS="-Djenkins.install.runSetupWizard=false"'
+    create: yes
+
+- name: Create Jenkins init scripts directory
+  file:
+    path: /var/lib/jenkins/init.groovy.d
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Create default admin user via Groovy script
+  copy:
+    dest: /var/lib/jenkins/init.groovy.d/basic-security.groovy
+    owner: jenkins
+    group: jenkins
+    mode: '0644'
+    content: |
+      import jenkins.model.*
+      import hudson.security.*
+
+      def instance = Jenkins.getInstance()
+      def hudsonRealm = new HudsonPrivateSecurityRealm(false)
+      hudsonRealm.createAccount("{{ jenkins_admin_user }}", "{{ jenkins_admin_password }}")
+      instance.setSecurityRealm(hudsonRealm)
+
+      def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+      strategy.setAllowAnonymousRead(false)
+      instance.setAuthorizationStrategy(strategy)
+      instance.save()
+
+- name: Download Jenkins plugin manager CLI
+  get_url:
+    url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.13.2/jenkins-plugin-manager-2.13.2.jar
+    dest: /opt/jenkins-plugin-manager.jar
+    mode: '0644'
+
+- name: Install required Jenkins plugins
+  shell: >
+    sudo java -jar /opt/jenkins-plugin-manager.jar
+    --war /usr/share/java/jenkins.war
+    --plugin-download-directory /var/lib/jenkins/plugins
+    --plugins git workflow-aggregator ssh-agent pipeline-stage-view
+
+- name: Fix ownership of Jenkins plugins directory
+  file:
+    path: /var/lib/jenkins/plugins
+    owner: jenkins
+    group: jenkins
+    recurse: yes
+  become: yes
+
 - name: Ensure Jenkins service is running and enabled
   service:
     name: jenkins
-    state: started
+    state: restarted
     enabled: yes
