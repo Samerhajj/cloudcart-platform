@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'DEPLOY_HOST', defaultValue: '34.254.252.99', description: 'Public IP of the target EC2 instance')
+    }
+
+    environment {
+        IMAGE_NAME = "cloudcart-app"
+        DEPLOY_USER = "ubuntu"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Samerhajj/cloudcart-platform.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'docker build -t ${IMAGE_NAME}:latest .'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh '''
+                    docker run -d --name test-container -p 5050:5000 -e FLASK_SECRET_KEY=test-key ${IMAGE_NAME}:latest
+                    sleep 5
+                    curl -f http://localhost:5050/ || (docker logs test-container && exit 1)
+                    docker stop test-container
+                    docker rm test-container
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sshagent(credentials: ['ec2-ssh-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${params.DEPLOY_HOST} "
+                            cd /home/ubuntu/cloudcart-platform &&
+                            git pull origin main &&
+                            docker compose -f docker/docker-compose.yml up -d --build
+                        "
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully — CloudCart deployed.'
+        }
+        failure {
+            echo 'Pipeline failed — check logs above.'
+        }
+    }
+}
