@@ -8,7 +8,7 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-insecure-fallback"
 
 @app.route("/")
 def health_check():
-    return "CloudCart is running", 200
+    return "CloudCart is online", 200
 
 
 @app.route("/products")
