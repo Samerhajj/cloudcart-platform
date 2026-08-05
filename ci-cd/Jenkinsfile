@@ -27,8 +27,14 @@ pipeline {
             steps {
                 sh '''
                     docker run -d --name test-container -p 5050:5000 -e FLASK_SECRET_KEY=test-key ${IMAGE_NAME}:latest
-                    sleep 5
-                    curl -f http://localhost:5050/ || (docker logs test-container && exit 1)
+                    
+                    for i in {1..10}; do
+                        if curl -f http://localhost:5050/ || (docker logs test-container && exit 1)
+                            
+                        fi
+                        echo "Waiting for Application"
+                        sleep 3
+                    done 
                     docker stop test-container
                     docker rm test-container
                 '''
@@ -39,7 +45,10 @@ pipeline {
             steps {
                 sshagent(credentials: ['ec2-ssh-key']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${params.DEPLOY_HOST} "
+
+                    echo "DEPLOY_USER=$DEPLOY_USER
+                    echo "DEPLOY_HOST=$DEPLOY_HOST
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
                             cd /home/ubuntu/cloudcart-platform &&
                             git pull origin main &&
                             docker compose -f docker/docker-compose.yml up -d --build

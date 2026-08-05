@@ -59,7 +59,7 @@
       import jenkins.model.*
       import hudson.security.*
       import jenkins.security.ApiTokenProperty
-      import hudson.model.User
+      import hudson.model.User  
 
       def instance = Jenkins.getInstance()
       def hudsonRealm = new HudsonPrivateSecurityRealm(false)
@@ -158,3 +158,14 @@
     body: "{{ lookup('file', 'roles/jenkins/files/pipeline-config.xml') }}"
     status_code: 200
   when: job_check.status == 404
+
+- name: Add jenkins user to docker group
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
+
+- name: Restart Jenkins to apply docker group membership
+  service:
+    name: jenkins
+    state: restarted
