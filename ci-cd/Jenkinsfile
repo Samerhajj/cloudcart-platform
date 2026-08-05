@@ -27,7 +27,8 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                    docker run -d --memory=256m \ 
+                    docker run -d \
+                    --memory=256m \
                     --name test-container \
                     -p 5050:5000 \
                     -e FLASK_SECRET_KEY=test-key \
