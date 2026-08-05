@@ -58,6 +58,8 @@
     content: |
       import jenkins.model.*
       import hudson.security.*
+      import jenkins.security.ApiTokenProperty
+      import hudson.model.User
 
       def instance = Jenkins.getInstance()
       def hudsonRealm = new HudsonPrivateSecurityRealm(false)
@@ -69,18 +71,33 @@
       instance.setAuthorizationStrategy(strategy)
       instance.save()
 
+      def user = User.get("{{ jenkins_admin_user }}")
+      def apiTokenProperty = user.getProperty(ApiTokenProperty.class)
+      def tokenFile = new File("/var/lib/jenkins/api_token.txt")
+      if (!tokenFile.exists()) {
+          def result = apiTokenProperty.tokenStore.generateNewToken("automation")
+          user.save()
+          tokenFile.text = result.plainValue
+      }
+
 - name: Download Jenkins plugin manager CLI
   get_url:
     url: https://github.com/jenkinsci/plugin-installation-manager-tool/releases/download/2.13.2/jenkins-plugin-manager-2.13.2.jar
     dest: /opt/jenkins-plugin-manager.jar
     mode: '0644'
 
+- name: Check if plugins already installed
+  stat:
+    path: /var/lib/jenkins/plugins/git.jpi
+  register: jenkins_plugins_installed
+
 - name: Install required Jenkins plugins
   shell: >
     sudo java -jar /opt/jenkins-plugin-manager.jar
     --war /usr/share/java/jenkins.war
     --plugin-download-directory /var/lib/jenkins/plugins
-    --plugins git workflow-aggregator ssh-agent pipeline-stage-view
+    --plugins git workflow-aggregator ssh-agent
+  when: not jenkins_plugins_installed.stat.exists
 
 - name: Fix ownership of Jenkins plugins directory
   file:
@@ -95,3 +112,49 @@
     name: jenkins
     state: restarted
     enabled: yes
+
+- name: Wait for Jenkins to be fully up after restart
+  uri:
+    url: "http://localhost:8080/login"
+    status_code: 200
+  register: jenkins_ready
+  retries: 15
+  delay: 5
+  until: jenkins_ready.status == 200
+
+- name: Read Jenkins API token
+  slurp:
+    src: /var/lib/jenkins/api_token.txt
+  register: api_token_raw
+
+- name: Set API token fact
+  set_fact:
+    jenkins_api_token: "{{ api_token_raw.content | b64decode | trim }}"
+
+- name: Copy pipeline job config
+  copy:
+    src: pipeline-config.xml
+    dest: /tmp/pipeline-config.xml
+
+- name: Check if pipeline job already exists
+  uri:
+    url: "http://localhost:8080/job/cloudcart-pipeline/api/json"
+    method: GET
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_api_token }}"
+    force_basic_auth: yes
+    status_code: [200, 404]
+  register: job_check
+
+- name: Create Jenkins pipeline job
+  uri:
+    url: "http://localhost:8080/createItem?name=cloudcart-pipeline"
+    method: POST
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_api_token }}"
+    force_basic_auth: yes
+    headers:
+      Content-Type: "application/xml"
+    body: "{{ lookup('file', 'roles/jenkins/files/pipeline-config.xml') }}"
+    status_code: 200
+  when: job_check.status == 404
