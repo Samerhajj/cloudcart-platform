@@ -7,7 +7,7 @@ resource "aws_security_group" "cloudcart_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [var.my_ip]
+    cidr_blocks = [var.my_ip,var.jenkins_ip]
   }
 
   ingress {
