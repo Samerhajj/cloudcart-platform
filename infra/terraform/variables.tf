@@ -21,6 +21,11 @@ variable "my_ip" {
   type        = string
 }
 
+variable "jenkins_ip" {
+  description = "Your jenkins_ip IP address in CIDR notation, allowed to SSH into the instance"
+  type        = string
+}
+
 variable "key_pair_name" {
   description = "Name of the AWS EC2 key pair used for SSH access"
   type        = string
