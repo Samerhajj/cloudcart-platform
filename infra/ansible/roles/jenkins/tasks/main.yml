@@ -34,11 +34,11 @@
     name: jenkins
     state: present
 
-- name: Skip Jenkins setup wizard
+- name: Skip Jenkins setup wizard and configure memory limit
   lineinfile:
     path: /etc/default/jenkins
     regexp: '^JAVA_ARGS='
-    line: 'JAVA_ARGS="-Djenkins.install.runSetupWizard=false"'
+    line: 'JAVA_ARGS="-Xms128m -Xmx384m -Djenkins.install.runSetupWizard=false"'
     create: yes
 
 - name: Create Jenkins init scripts directory
@@ -88,7 +88,7 @@
 
 - name: Check if plugins already installed
   stat:
-    path: /var/lib/jenkins/plugins/git.jpi
+    path: /var/lib/jenkins/plugins/github.jpi
   register: jenkins_plugins_installed
 
 - name: Install required Jenkins plugins
@@ -96,7 +96,7 @@
     sudo java -jar /opt/jenkins-plugin-manager.jar
     --war /usr/share/java/jenkins.war
     --plugin-download-directory /var/lib/jenkins/plugins
-    --plugins git workflow-aggregator ssh-agent
+    --plugins git workflow-aggregator ssh-agent github github-api
   when: not jenkins_plugins_installed.stat.exists
 
 - name: Fix ownership of Jenkins plugins directory

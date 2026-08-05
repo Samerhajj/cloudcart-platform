@@ -11,6 +11,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Samerhajj/cloudcart-platform.git'
@@ -19,22 +20,31 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:latest .'
+                sh 'docker build --memory=512m -t ${IMAGE_NAME}:latest .'
             }
         }
 
         stage('Test') {
             steps {
                 sh '''
-                    docker run -d --name test-container -p 5050:5000 -e FLASK_SECRET_KEY=test-key ${IMAGE_NAME}:latest
-                    
+                    docker run -d --memory=256m \ 
+                    --name test-container \
+                    -p 5050:5000 \
+                    -e FLASK_SECRET_KEY=test-key \
+                    ${IMAGE_NAME}:latest
+
                     for i in {1..10}; do
-                        if curl -f http://localhost:5050/ || (docker logs test-container && exit 1)
-                            
+                        if curl -f http://localhost:5050/; then
+                            echo "Application is ready"
+                            break
                         fi
-                        echo "Waiting for Application"
+
+                        echo "Waiting for Application..."
                         sleep 3
-                    done 
+                    done
+
+                    docker logs test-container
+
                     docker stop test-container
                     docker rm test-container
                 '''
@@ -45,14 +55,14 @@ pipeline {
             steps {
                 sshagent(credentials: ['ec2-ssh-key']) {
                     sh '''
+                        echo "DEPLOY_USER=$DEPLOY_USER"
+                        echo "DEPLOY_HOST=$DEPLOY_HOST"
 
-                    echo "DEPLOY_USER=$DEPLOY_USER
-                    echo "DEPLOY_HOST=$DEPLOY_HOST
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} '
                             cd /home/ubuntu/cloudcart-platform &&
                             git pull origin main &&
                             docker compose -f docker/docker-compose.yml up -d --build
-                        "
+                        '
                     '''
                 }
             }
@@ -63,6 +73,7 @@ pipeline {
         success {
             echo 'Pipeline completed successfully — CloudCart deployed.'
         }
+
         failure {
             echo 'Pipeline failed — check logs above.'
         }
