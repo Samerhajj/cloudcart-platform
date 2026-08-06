@@ -26,6 +26,14 @@ resource "aws_security_group" "cloudcart_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "Kubernetes NodePort for CloudCart app"
+    from_port   = 30500
+    to_port     = 30500
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
   egress {
     description = "Allow all outbound traffic"
     from_port   = 0
