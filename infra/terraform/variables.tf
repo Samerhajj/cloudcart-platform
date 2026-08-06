@@ -13,7 +13,7 @@ variable "project_name" {
 variable "instance_type" {
   description = "EC2 instance type, must remain within AWS Free Tier"
   type        = string
-  default     = "t3.micro"
+  default     = "t3.small"
 }
 
 variable "my_ip" {
