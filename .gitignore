@@ -16,3 +16,4 @@ infra/terraform/*.tfstate
 infra/terraform/*.tfstate.backup
 infra/ansible/group_vars/all.yml
 kubernetes/secret.yaml
+kubernetes/grafana-secret-values.yaml
