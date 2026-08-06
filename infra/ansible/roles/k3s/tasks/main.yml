@@ -56,3 +56,22 @@
   become: yes
   become_user: ubuntu
   command: k3s kubectl apply -f /home/ubuntu/cloudcart-platform/kubernetes/service.yaml
+
+- name: Check if Prometheus Helm repo already added
+  become: yes
+  become_user: ubuntu
+  command: helm repo list
+  register: helm_repo_list
+  changed_when: false
+  failed_when: false
+
+- name: Add Prometheus community Helm repo
+  become: yes
+  become_user: ubuntu
+  command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  when: "'prometheus-community' not in helm_repo_list.stdout"
+
+- name: Update Helm repos
+  become: yes
+  become_user: ubuntu
+  command: helm repo update
