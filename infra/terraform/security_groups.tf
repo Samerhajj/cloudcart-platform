@@ -33,6 +33,14 @@ resource "aws_security_group" "cloudcart_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    description = "Grafana dashboard"
+    from_port   = 30300
+    to_port     = 30300
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   
   egress {
     description = "Allow all outbound traffic"
