@@ -6,12 +6,11 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "cloudcart-app"
+        IMAGE_NAME = "whereshadow/cloudcart-app"
         DEPLOY_USER = "ubuntu"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Samerhajj/cloudcart-platform.git'
@@ -27,28 +26,39 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                    docker run -d \
-                    --memory=256m \
-                    --name test-container \
-                    -p 5050:5000 \
-                    -e FLASK_SECRET_KEY=test-key \
-                    ${IMAGE_NAME}:latest
+                    docker run -d --memory=256m --name test-container -p 5050:5000 -e FLASK_SECRET_KEY=test-key ${IMAGE_NAME}:latest
 
-                    for i in {1..10}; do
+                    SUCCESS=0
+                    for i in $(seq 1 10); do
                         if curl -f http://localhost:5050/; then
-                            echo "Application is ready"
+                            SUCCESS=1
                             break
                         fi
-
-                        echo "Waiting for Application..."
+                        echo "Waiting for application..."
                         sleep 3
                     done
 
-                    docker logs test-container
+                    if [ "$SUCCESS" -ne 1 ]; then
+                        docker logs test-container
+                        docker stop test-container
+                        docker rm test-container
+                        exit 1
+                    fi
 
                     docker stop test-container
                     docker rm test-container
                 '''
+            }
+        }
+
+        stage('Push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${IMAGE_NAME}:latest
+                    '''
+                }
             }
         }
 
@@ -58,12 +68,10 @@ pipeline {
                     sh '''
                         echo "DEPLOY_USER=$DEPLOY_USER"
                         echo "DEPLOY_HOST=$DEPLOY_HOST"
-
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} '
-                            cd /home/ubuntu/cloudcart-platform &&
-                            git pull origin main &&
-                            docker compose -f docker/docker-compose.yml up -d --build
-                        '
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
+                            kubectl set image deployment/cloudcart-app cloudcart-app=${IMAGE_NAME}:latest -n cloudcart &&
+                            kubectl rollout status deployment/cloudcart-app -n cloudcart
+                        "
                     '''
                 }
             }
@@ -72,9 +80,8 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully — CloudCart deployed.'
+            echo 'Pipeline completed successfully — CloudCart deployed to Kubernetes.'
         }
-
         failure {
             echo 'Pipeline failed — check logs above.'
         }
