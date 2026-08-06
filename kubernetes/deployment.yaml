@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
         - name: cloudcart-app
-          image: cloudcart-app:latest
-          imagePullPolicy: IfNotPresent
+          image: whereshadow/cloudcart-app:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:
