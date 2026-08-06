@@ -1,0 +1,29 @@
+---
+- name: Check if swap file already exists
+  stat:
+    path: /swapfile
+  register: swap_file
+
+- name: Create 1GB swap file
+  command: fallocate -l 1G /swapfile
+  when: not swap_file.stat.exists
+
+- name: Set swap file permissions
+  file:
+    path: /swapfile
+    mode: '0600'
+  when: not swap_file.stat.exists
+
+- name: Format swap file
+  command: mkswap /swapfile
+  when: not swap_file.stat.exists
+
+- name: Enable swap file
+  command: swapon /swapfile
+  when: not swap_file.stat.exists
+
+- name: Add swap file to fstab for persistence across reboots
+  lineinfile:
+    path: /etc/fstab
+    line: '/swapfile none swap sw 0 0'
+    state: present

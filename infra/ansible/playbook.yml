@@ -4,6 +4,8 @@
   become: yes
 
   roles:
+    - system-setup
     - docker
+    - k3s
     - jenkins
     - deploy_app
