@@ -1,0 +1,28 @@
+replicaCount: 2
+
+image:
+  repository: whereshadow/cloudcart-app
+  tag: latest
+  pullPolicy: Always
+
+namespace: cloudcart
+
+service:
+  type: NodePort
+  port: 5000
+  targetPort: 5000
+  nodePort: 30500
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "250m"
+
+env:
+  dbHost: "172.31.20.109"
+  dbPort: "5432"
+
+secretName: cloudcart-secrets

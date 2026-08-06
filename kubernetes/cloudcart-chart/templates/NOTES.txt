@@ -1,0 +1,7 @@
+CloudCart has been deployed.
+
+To access the application:
+  http://<node-ip>:{{ .Values.service.nodePort }}/products
+
+To check pod status:
+  kubectl get pods -n {{ .Values.namespace }}

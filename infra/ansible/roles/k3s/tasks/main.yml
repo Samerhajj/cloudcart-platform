@@ -16,6 +16,15 @@
   delay: 5
   changed_when: false
 
+- name: Check if Helm is already installed
+  stat:
+    path: /usr/local/bin/helm
+  register: helm_installed
+
+- name: Install Helm
+  shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  when: not helm_installed.stat.exists
+
 - name: Set kubeconfig permissions for ubuntu user
   file:
     path: /etc/rancher/k3s/k3s.yaml
@@ -37,7 +46,7 @@
     owner: ubuntu
     group: ubuntu
     mode: '0600'
-    
+
 - name: Apply Kubernetes namespace
   become: yes
   become_user: ubuntu
