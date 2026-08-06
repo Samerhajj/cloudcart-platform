@@ -5,6 +5,8 @@
     state: present
 
 - name: Clone or update CloudCart repository
+  become: yes
+  become_user: ubuntu
   git:
     repo: "https://github.com/Samerhajj/cloudcart-platform.git"
     dest: /home/ubuntu/cloudcart-platform
