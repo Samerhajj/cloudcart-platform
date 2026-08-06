@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'DEPLOY_HOST', defaultValue: '34.254.252.99', description: 'Public IP of the target EC2 instance')
+        string(name: 'DEPLOY_HOST', defaultValue: '54.246.41.33', description: 'Public IP of the target EC2 instance')
     }
 
     environment {
