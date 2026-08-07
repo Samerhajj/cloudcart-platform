@@ -62,10 +62,11 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
+                   export KUBECONFIG=/home/jenkins/.kube/config
                     cd /opt/cloudcart-platform
                     git pull origin main
                     helm upgrade cloudcart-release kubernetes/cloudcart-chart -n cloudcart
-                    kubectl rollout status deployment/cloudcart-app -n cloudcart
+                    kubectl rollout status deployment/cloudcart-app -n cloudcart 
                 '''
             }
         }
