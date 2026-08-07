@@ -52,10 +52,6 @@
   become_user: ubuntu
   command: k3s kubectl apply -f /home/ubuntu/cloudcart-platform/kubernetes/namespace.yaml
 
-- name: Apply Kubernetes service
-  become: yes
-  become_user: ubuntu
-  command: k3s kubectl apply -f /home/ubuntu/cloudcart-platform/kubernetes/service.yaml
 
 - name: Check if Prometheus Helm repo already added
   become: yes
