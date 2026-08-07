@@ -41,6 +41,23 @@
     name: jenkins
     state: present
 
+- name: Create .kube directory for jenkins user
+  file:
+    path: /home/jenkins/.kube
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Copy kubeconfig to jenkins user's home
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /home/jenkins/.kube/config
+    remote_src: yes
+    owner: jenkins
+    group: jenkins
+    mode: '0600'
+
 - name: Create Jenkins init scripts directory
   file:
     path: /var/lib/jenkins/init.groovy.d
