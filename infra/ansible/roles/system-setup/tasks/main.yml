@@ -27,3 +27,18 @@
     path: /etc/fstab
     line: '/swapfile none swap sw 0 0'
     state: present
+
+- name: Install git
+  apt:
+    name: git
+    state: present
+    update_cache: yes
+
+- name: Clone CloudCart repository early so later roles can reference it
+  become: yes
+  become_user: ubuntu
+  git:
+    repo: "https://github.com/Samerhajj/cloudcart-platform.git"
+    dest: /home/ubuntu/cloudcart-platform
+    version: main
+    force: yes
