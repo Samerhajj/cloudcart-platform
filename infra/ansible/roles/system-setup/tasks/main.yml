@@ -4,8 +4,8 @@
     path: /swapfile
   register: swap_file
 
-- name: Create 1GB swap file
-  command: fallocate -l 1G /swapfile
+- name: Create 2GB swap file
+  command: fallocate -l 2G /swapfile
   when: not swap_file.stat.exists
 
 - name: Set swap file permissions
