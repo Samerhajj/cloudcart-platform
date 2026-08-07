@@ -89,3 +89,14 @@ Once deployed, the application is reachable at http://<instance-ip>:30500/produc
 - [Challenges](docs/challenges.md)
 - [Lessons learned](docs/lessons-learned.md)
 - [Future improvements](docs/future-improvements.md)
+## Screenshots
+
+Evidence of the working system, captured during a genuine from-scratch deployment test.
+
+- **Jenkins dashboard** — [docs/screenshots/jenkinsDash.png](docs/screenshots/jenkinsDash.png)
+- **Successful pipeline run** (Checkout, Build, Test, Push, Deploy) — [docs/screenshots/jenkinsPipeLineSuccess.png](docs/screenshots/jenkinsPipeLineSuccess.png)
+- **Jenkins credentials configured** — [docs/screenshots/jenkinsCredentials.png](docs/screenshots/jenkinsCredentials.png)
+- **GitHub webhook configuration** — [docs/screenshots/githubWebHook.png](docs/screenshots/githubWebHook.png)
+- **Full automated deployment output** (terraform + ansible via deploy.sh) — [docs/screenshots/deployOutput.png](docs/screenshots/deployOutput.png)
+- **Kubernetes pods and Helm release running** — [docs/screenshots/kubectl-pods-running.png](docs/screenshots/kubectl-pods-running.png)
+- **Grafana dashboard with live metrics** — [docs/screenshots/grafana.png](docs/screenshots/grafana.png)
