@@ -96,7 +96,7 @@
     sudo java -jar /opt/jenkins-plugin-manager.jar
     --war /usr/share/java/jenkins.war
     --plugin-download-directory /var/lib/jenkins/plugins
-    --plugins git workflow-aggregator ssh-agent github github-api
+    --plugins git workflow-aggregator ssh-agent github github-api pipeline-stage-view
   when: not jenkins_plugins_installed.stat.exists
 
 - name: Fix ownership of Jenkins plugins directory

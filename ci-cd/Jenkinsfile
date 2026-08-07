@@ -1,9 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        string(name: 'DEPLOY_HOST', defaultValue: '54.246.41.33', description: 'Public IP of the target EC2 instance')
-    }
 
     environment {
         IMAGE_NAME = "whereshadow/cloudcart-app"
