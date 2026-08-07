@@ -34,5 +34,11 @@ Changes that would be worth making if this were a real, ongoing production syste
 
 ## Application
 
+- Add user accounts with login/registration, so carts and order history persist per user instead of relying solely on anonymous session cookies.
+- Allow selecting a quantity when adding an item to the cart, rather than always adding one unit per click.
+- Build a real checkout page collecting shipping and payment details, rather than the current single-click simulated checkout.
+- Send an order confirmation (e.g. an email or a receipt document) on successful checkout, potentially stored in an S3 bucket for durability and audit purposes.
+- Decrement product stock in the database on checkout, with proper transactional handling to prevent overselling under concurrent purchases, and floor stock at zero rather than allowing negative values.
+- Mark products as "out of stock" and prevent adding them to the cart once their stock reaches zero.
 - Add a proper automated test suite.
 - Move the shopping cart from session-based cookies to a persisted, database-backed cart, allowing it to survive across devices and sessions.
