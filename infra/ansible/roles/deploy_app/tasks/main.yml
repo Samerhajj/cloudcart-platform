@@ -21,7 +21,44 @@
     group: ubuntu
     mode: '0600'
 
-- name: Start application stack with Docker Compose
-  command: docker compose -f /home/ubuntu/cloudcart-platform/docker/docker-compose.yml up -d --build
+- name: Start database with Docker Compose
+  command: docker compose -f /home/ubuntu/cloudcart-platform/docker/docker-compose.yml up -d
   args:
     chdir: /home/ubuntu/cloudcart-platform/docker
+
+- name: Check if Kubernetes secret already exists
+  become: yes
+  become_user: ubuntu
+  command: k3s kubectl get secret cloudcart-secrets -n cloudcart
+  register: secret_check
+  failed_when: false
+  changed_when: false
+
+- name: Create Kubernetes secret from .env values
+  become: yes
+  become_user: ubuntu
+  shell: |
+    set -a
+    source /home/ubuntu/cloudcart-platform/docker/.env
+    set +a
+    k3s kubectl create secret generic cloudcart-secrets -n cloudcart \
+      --from-literal=flask-secret-key="$FLASK_SECRET_KEY" \
+      --from-literal=db-name="$DB_NAME" \
+      --from-literal=db-user="$DB_USER" \
+      --from-literal=db-password="$DB_PASSWORD"
+  args:
+    executable: /bin/bash
+  when: secret_check.rc != 0
+
+- name: Check if cloudcart-release already installed
+  become: yes
+  become_user: ubuntu
+  command: helm list -n cloudcart -q
+  register: helm_releases
+  changed_when: false
+
+- name: Install CloudCart application via Helm
+  become: yes
+  become_user: ubuntu
+  command: helm install cloudcart-release /home/ubuntu/cloudcart-platform/kubernetes/cloudcart-chart -n cloudcart
+  when: "'cloudcart-release' not in helm_releases.stdout"
