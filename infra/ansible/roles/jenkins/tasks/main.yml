@@ -47,6 +47,16 @@
     groups: ubuntu
     append: yes
 
+- name: Check if safe.directory already configured for jenkins
+  shell: sudo -u jenkins git config --global --get-all safe.directory
+  register: safe_dir_check
+  failed_when: false
+  changed_when: false
+
+- name: Mark /opt/cloudcart-platform as safe git directory for jenkins user
+  shell: sudo -u jenkins git config --global --add safe.directory /opt/cloudcart-platform
+  when: "'/opt/cloudcart-platform' not in safe_dir_check.stdout"
+
 - name: Create .kube directory for jenkins user
   file:
     path: /home/jenkins/.kube
