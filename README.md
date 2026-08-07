@@ -16,70 +16,71 @@ See docs/architecture.md for the full diagram and explanation.
 
 See docs/folder-structure.md for a full breakdown of what lives where.
 
-
 ## Running this yourself
 
 Everything below assumes two machines: your own local machine (where you run Terraform and Ansible), and the EC2 instance Terraform creates (where the application, Kubernetes cluster, and Jenkins actually run). Each step below states which machine it runs on.
 
 ### Prerequisites (on your local machine)
 
-1. An AWS account, with an IAM user that has EC2, security group, and S3 permissions. Configure the AWS CLI with that user's credentials by running `aws configure` and providing the Access Key ID, Secret Access Key, and your preferred region.
-2. An EC2 key pair created in the AWS Console (EC2 -> Network & Security -> Key Pairs -> Create key pair, format .pem), downloaded and saved locally, for example to `~/.ssh/aws-keys/your-keypair.pem`. Set its permissions with `chmod 400 ~/.ssh/aws-keys/your-keypair.pem`.
-3. Terraform, Ansible, and the AWS CLI installed locally.
-4. Your current public IP address, for example from `curl https://checkip.amazonaws.com`, used to restrict SSH access to only you.
+1. An AWS account. Create an IAM user for this project (AWS Console -> IAM -> Users -> Create user), attach permissions for EC2, Security Groups, and S3, and generate an Access Key ID and Secret Access Key for it. Configure the AWS CLI with these credentials by running `aws configure`.
+2. An EC2 key pair created in the AWS Console (EC2 -> Network & Security -> Key Pairs -> Create key pair, format .pem). Double-check the region selector in the top-right of the console matches the region this project uses (eu-west-1 by default) before creating it -- creating the key pair in the wrong region is a common mistake that causes `terraform apply` to fail with `InvalidKeyPair.NotFound`. Download the key, save it locally, for example to `~/.ssh/aws-keys/your-keypair.pem`, and set its permissions with `chmod 400 ~/.ssh/aws-keys/your-keypair.pem`.
+3. A Docker Hub account (hub.docker.com), with a public repository created for this project (e.g. `your-username/cloudcart-app`), and an access token generated under Account Settings -> Security -> Personal Access Tokens.
+4. Terraform, Ansible, and the AWS CLI installed locally.
+5. Your current public IP address, for example from `curl https://checkip.amazonaws.com`, used to restrict SSH access to only you.
 
 ### 1. Provision AWS infrastructure (on your local machine)
 
-Navigate to infra/terraform. Copy terraform.tfvars.example to terraform.tfvars.
+Navigate to `infra/terraform`. Copy `terraform.tfvars.example` to `terraform.tfvars`.
 
-Edit terraform.tfvars and set my_ip to your public IP in CIDR notation (e.g. 123.45.67.89/32) and key_pair_name to the name of the EC2 key pair created above.
+Edit `terraform.tfvars` and set `my_ip` to your public IP in CIDR notation (e.g. `123.45.67.89/32`) and `key_pair_name` to the exact name of the EC2 key pair created above.
 
-Run terraform init, then terraform apply. This creates the EC2 instance and security group, and automatically writes the instance's public IP into infra/ansible/inventory.ini.
+Run `terraform init`, then `terraform apply`. This creates the EC2 instance and security group, and automatically writes the instance's public IP into `infra/ansible/inventory.ini`.
 
-### 2. Configure the server (run from your local machine)
+### 2. Set application secrets (on your local machine, before running Ansible)
 
-Navigate to infra/ansible. The inventory.ini file was already generated in the previous step and points at your new instance.
+Copy `docker/.env.example` to `.env` in the `docker/` folder and fill in real values: a random string for `FLASK_SECRET_KEY`, and a database name, user, and password of your choice for `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. This must be done before the next step, since Ansible copies this file to the server and uses its values to create the Kubernetes secret and deploy the application automatically.
 
-Copy group_vars/all.yml.example to group_vars/all.yml, and set a real Jenkins admin password.
+### 3. Configure the server and deploy the application (run from your local machine)
 
-Run ansible-playbook -i inventory.ini playbook.yml. This command runs on your local machine but connects to the EC2 instance over SSH and configures it: installing Docker, Kubernetes (k3s), Helm, and Jenkins, and applying the base Kubernetes namespace and service. This step takes several minutes.
+Navigate to `infra/ansible`. `inventory.ini` was already generated in step 1 and points at your new instance.
 
-### 3. Set application secrets (on your local machine, before running Ansible)
+Copy `group_vars/all.yml.example` to `group_vars/all.yml`, and set a real Jenkins admin password.
 
-Copy docker/.env.example to .env in the docker/ folder and fill in real values: a random string for FLASK_SECRET_KEY, and a database name, user, and password of your choice for DB_NAME, DB_USER, and DB_PASSWORD. This must be done before running ansible-playbook in step 2, since Ansible copies this file to the server and uses its values to create the Kubernetes secret and deploy the application automatically.
+Run `ansible-playbook -i inventory.ini playbook.yml`. This command runs on your local machine but connects to the EC2 instance over SSH and configures it: installing Docker, Kubernetes (k3s), Helm, and Jenkins; applying the base Kubernetes namespace and service; creating the Kubernetes secret from your `.env` values; and installing the application via Helm. This step takes several minutes.
 
-### 4. Application deployment
+Once it completes, confirm the application deployed correctly by visiting `http://<instance-ip>:30500/products`.
 
-No manual action needed here: the ansible-playbook run in step 2 already created the Kubernetes secret from the .env values and installed the application via Helm. Confirm it deployed correctly by checking http://<instance-ip>:30500/products once step 2 completes.
+### 4. Configure the Jenkins pipeline (in your browser)
 
+Open `http://<instance-ip>:8080` and log in with the admin username and password set in step 3. The `cloudcart-pipeline` job already exists, created automatically during server configuration, and its GitHub webhook trigger is enabled by default -- but it needs one credential added before it can build and push images successfully: go to Manage Jenkins -> Credentials -> (global) -> Add Credentials, and add `dockerhub-credentials`: kind Username with password, using your Docker Hub username and the access token generated in the prerequisites (not your account password).
 
-### 5. Configure the Jenkins pipeline (in your browser)
+Update the `IMAGE_NAME` variable near the top of `ci-cd/Jenkinsfile` to match your own Docker Hub username and repository before running the pipeline, then commit and push that change.
 
-Open http://<instance-ip>:8080 and log in with the admin username and password set in group_vars/all.yml. The cloudcart-pipeline job already exists, created automatically during server configuration, but needs two credentials added before it can build and deploy successfully: go to Manage Jenkins -> Credentials -> (global) -> Add Credentials, and add:
+In your GitHub repository, go to Settings -> Webhooks -> Add webhook. Set the Payload URL to `http://<instance-ip>:8080/github-webhook/`, content type to `application/json`, and select "Just the push event". This makes Jenkins build automatically on every push to `main`.
 
-ec2-ssh-key: kind SSH Username with private key, username ubuntu, private key pasted directly from your EC2 key pair file. This lets the pipeline deploy over SSH.
+### 5. Set up monitoring (on the EC2 server)
 
-dockerhub-credentials: kind Username with password, using a Docker Hub username and an access token (not your account password). This lets the pipeline push built images.
+This step is intentionally manual rather than automated: installing the full monitoring stack alongside Jenkins, k3s, Docker, and Postgres is resource-intensive on a `t3.small` instance, and automating it caused real instability during development (see docs/challenges.md). Expect the instance to be under heavy load for a few minutes after installation.
 
-Update the IMAGE_NAME variable near the top of ci-cd/Jenkinsfile to match your own Docker Hub username before running the pipeline.
+SSH into the instance. From `kubernetes/`, copy `grafana-secret-values.yaml.example` to `grafana-secret-values.yaml` and set a real Grafana admin password.
 
-Update the DEPLOY_HOST parameter's defaultValue in ci-cd/Jenkinsfile to match your instance's current public IP. This value is not automatically kept in sync: if the instance is ever stopped and started again, or destroyed and recreated, its public IP changes and this value must be updated manually, either by editing the Jenkinsfile or by entering the correct IP in the Build with Parameters form each time the pipeline is triggered.
+Add the Prometheus community Helm repository: `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts`, then `helm repo update`.
 
-In your GitHub repository, go to Settings -> Webhooks -> Add webhook. Set the Payload URL to http://<instance-ip>:8080/github-webhook/, content type to application/json, and select "Just the push event". This makes Jenkins build automatically on every push to main, rather than requiring a manual trigger.
+Install the monitoring stack: `helm install prometheus-stack prometheus-community/kube-prometheus-stack -n cloudcart -f prometheus-values.yaml -f grafana-secret-values.yaml`.
 
-### 6. Set up monitoring (on the EC2 server)
-
-On the server, from kubernetes/, copy grafana-secret-values.yaml.example to grafana-secret-values.yaml and set a real Grafana admin password.
-
-Add the Prometheus community Helm repository: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts, then helm repo update.
-
-Install the monitoring stack: helm install prometheus-stack prometheus-community/kube-prometheus-stack -n cloudcart -f prometheus-values.yaml -f grafana-secret-values.yaml.
-
-Grafana is reachable at http://<instance-ip>:30300, logging in as admin with the password set above.
+Grafana is reachable at `http://<instance-ip>:30300`, logging in as `admin` with the password set above.
 
 ### Accessing the application
 
-Once deployed, the application is reachable at http://<instance-ip>:30500/products.
+Once deployed, the application is reachable at `http://<instance-ip>:30500/products`.
+
+### Running locally instead (no AWS required)
+
+To run the application and database locally with Docker Compose, without touching AWS at all: complete step 2 above (set up `docker/.env`), then run `./scripts/run-local.sh`. The application will be reachable at `http://localhost:5000/products`.
+
+### Tearing down
+
+To destroy all AWS resources created by this project, run `./scripts/destroy.sh` from the repository root. It will show exactly what will be destroyed and require typed confirmation before proceeding.
 
 ## Documentation
 
@@ -89,6 +90,7 @@ Once deployed, the application is reachable at http://<instance-ip>:30500/produc
 - [Challenges](docs/challenges.md)
 - [Lessons learned](docs/lessons-learned.md)
 - [Future improvements](docs/future-improvements.md)
+
 ## Screenshots
 
 Evidence of the working system, captured during a genuine from-scratch deployment test.
