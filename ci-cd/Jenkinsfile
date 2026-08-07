@@ -62,7 +62,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
-                    cd /home/ubuntu/cloudcart-platform
+                    cd /opt/cloudcart-platform
                     git pull origin main
                     helm upgrade cloudcart-release kubernetes/cloudcart-chart -n cloudcart
                     kubectl rollout status deployment/cloudcart-app -n cloudcart

@@ -34,11 +34,19 @@
     state: present
     update_cache: yes
 
+- name: Create /opt/cloudcart-platform directory with shared access
+  file:
+    path: /opt/cloudcart-platform
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0775'
+
 - name: Clone CloudCart repository early so later roles can reference it
   become: yes
   become_user: ubuntu
   git:
     repo: "https://github.com/Samerhajj/cloudcart-platform.git"
-    dest: /home/ubuntu/cloudcart-platform
+    dest: /opt/cloudcart-platform
     version: main
     force: yes
