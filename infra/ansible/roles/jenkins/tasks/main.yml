@@ -59,7 +59,7 @@
       import jenkins.model.*
       import hudson.security.*
       import jenkins.security.ApiTokenProperty
-      import hudson.model.User  
+      import hudson.model.User
 
       def instance = Jenkins.getInstance()
       def hudsonRealm = new HudsonPrivateSecurityRealm(false)
@@ -155,9 +155,22 @@
     force_basic_auth: yes
     headers:
       Content-Type: "application/xml"
-    body: "{{ lookup('file', 'roles/jenkins/files/pipeline-config.xml') }}"
+    body: "{{ lookup('file', 'roles/jenkins/files/pipeline-config.xml') | replace('__DEPLOY_HOST_PLACEHOLDER__', ansible_host) }}"
     status_code: 200
   when: job_check.status == 404
+
+- name: Update Jenkins pipeline job with current instance IP
+  uri:
+    url: "http://localhost:8080/job/cloudcart-pipeline/config.xml"
+    method: POST
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_api_token }}"
+    force_basic_auth: yes
+    headers:
+      Content-Type: "application/xml"
+    body: "{{ lookup('file', 'roles/jenkins/files/pipeline-config.xml') | replace('__DEPLOY_HOST_PLACEHOLDER__', ansible_host) }}"
+    status_code: 200
+  when: job_check.status == 200
 
 - name: Add jenkins user to docker group
   user:
