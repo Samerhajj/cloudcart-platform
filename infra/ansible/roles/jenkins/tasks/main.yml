@@ -29,17 +29,17 @@
   apt:
     update_cache: yes
 
-- name: Install Jenkins
-  apt:
-    name: jenkins
-    state: present
-
 - name: Skip Jenkins setup wizard and configure memory limit
   lineinfile:
     path: /etc/default/jenkins
     regexp: '^JAVA_ARGS='
     line: 'JAVA_ARGS="-Xms128m -Xmx384m -Djenkins.install.runSetupWizard=false"'
     create: yes
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
 
 - name: Create Jenkins init scripts directory
   file:
