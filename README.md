@@ -56,7 +56,7 @@ Open `http://<instance-ip>:8080` and log in with the admin username and password
 
 Update the `IMAGE_NAME` variable near the top of `ci-cd/Jenkinsfile` to match your own Docker Hub username and repository before running the pipeline, then commit and push that change.
 
-In your GitHub repository, go to Settings -> Webhooks -> Add webhook. Set the Payload URL to `http://<instance-ip>:8080/github-webhook/`, content type to `application/json`, and select "Just the push event". This makes Jenkins build automatically on every push to `main`.
+In your GitHub repository, go to Settings -> Webhooks -> Add webhook. Set the Payload URL to `http://<instance-ip>:8080/github-webhook/`, content type to `application/json`, and under "SSL verification" select "Disable" -- Jenkins is served over plain HTTP in this setup, not HTTPS, so GitHub would otherwise fail to deliver the webhook. Select "Just the push event", then click Add webhook. This makes Jenkins build automatically on every push to `main`.
 
 ### 5. Set up monitoring (on the EC2 server)
 
