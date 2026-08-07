@@ -16,33 +16,69 @@ See docs/architecture.md for the full diagram and explanation.
 
 See docs/folder-structure.md for a full breakdown of what lives where.
 
+
 ## Running this yourself
 
-This project is designed to be provisioned from scratch on your own AWS account. It requires an AWS account with credentials configured locally, an SSH key pair, and Terraform, Ansible, and Docker installed on your control machine.
+Everything below assumes two machines: your own local machine (where you run Terraform and Ansible), and the EC2 instance Terraform creates (where the application, Kubernetes cluster, and Jenkins actually run). Each step below states which machine it runs on.
 
-### 1. AWS infrastructure
+### Prerequisites (on your local machine)
 
-Copy infra/terraform/terraform.tfvars.example to terraform.tfvars and fill in your public IP and EC2 key pair name. Run terraform init, then terraform apply. This provisions an EC2 instance and security group, and outputs the instance's public IP.
+1. An AWS account, with an IAM user that has EC2, security group, and S3 permissions. Configure the AWS CLI with that user's credentials by running `aws configure` and providing the Access Key ID, Secret Access Key, and your preferred region.
+2. An EC2 key pair created in the AWS Console (EC2 -> Network & Security -> Key Pairs -> Create key pair, format .pem), downloaded and saved locally, for example to `~/.ssh/aws-keys/your-keypair.pem`. Set its permissions with `chmod 400 ~/.ssh/aws-keys/your-keypair.pem`.
+3. Terraform, Ansible, and the AWS CLI installed locally.
+4. Your current public IP address, for example from `curl https://checkip.amazonaws.com`, used to restrict SSH access to only you.
 
-### 2. Server configuration and deployment
+### 1. Provision AWS infrastructure (on your local machine)
 
-Terraform automatically writes the instance's public IP into infra/ansible/inventory.ini as part of terraform apply, so no manual editing is needed. Copy group_vars/all.yml.example to group_vars/all.yml and set a real Jenkins admin password. Run ansible-playbook -i inventory.ini playbook.yml. This installs Docker, Kubernetes (k3s), Helm, and Jenkins, and applies the base Kubernetes namespace and service.
+Navigate to infra/terraform. Copy terraform.tfvars.example to terraform.tfvars.
 
-### 3. Application secrets
+Edit terraform.tfvars and set my_ip to your public IP in CIDR notation (e.g. 123.45.67.89/32) and key_pair_name to the name of the EC2 key pair created above.
 
-Copy docker/.env.example to .env and fill in real values. Copy kubernetes/secret.yaml.example to secret.yaml and fill in real values, then apply it on the server with kubectl apply -f secret.yaml.
+Run terraform init, then terraform apply. This creates the EC2 instance and security group, and automatically writes the instance's public IP into infra/ansible/inventory.ini.
 
-### 4. Deploy the application
+### 2. Configure the server (run from your local machine)
 
-From kubernetes/cloudcart-chart, run helm install cloudcart-release . -n cloudcart.
+Navigate to infra/ansible. The inventory.ini file was already generated in the previous step and points at your new instance.
 
-### 5. Jenkins pipeline
+Copy group_vars/all.yml.example to group_vars/all.yml, and set a real Jenkins admin password.
 
-Log into Jenkins at http://<instance-ip>:8080 using the admin credentials set in step 2. Add two credentials: ec2-ssh-key (your EC2 key pair, for SSH deployment) and dockerhub-credentials (a Docker Hub username and access token, for pushing images). The cloudcart-pipeline job is created automatically by Ansible and is ready to build.
+Run ansible-playbook -i inventory.ini playbook.yml. This command runs on your local machine but connects to the EC2 instance over SSH and configures it: installing Docker, Kubernetes (k3s), Helm, and Jenkins, and applying the base Kubernetes namespace and service. This step takes several minutes.
 
-### 6. Monitoring
+### 3. Set application secrets (on the EC2 server)
 
-Copy kubernetes/grafana-secret-values.yaml.example to grafana-secret-values.yaml and set a real Grafana admin password. On the server, add the Prometheus community Helm repo and run helm install prometheus-stack prometheus-community/kube-prometheus-stack -n cloudcart -f prometheus-values.yaml -f grafana-secret-values.yaml. Grafana is reachable at http://<instance-ip>:30300.
+From this point on, connect to the EC2 instance itself: ssh -i ~/.ssh/aws-keys/your-keypair.pem ubuntu@<instance-ip>. The repository has already been cloned there by the previous step, at /home/ubuntu/cloudcart-platform.
+
+On the server, navigate to docker/. Copy .env.example to .env and fill in real values: a random string for FLASK_SECRET_KEY, and a database name, user, and password of your choice for DB_NAME, DB_USER, and DB_PASSWORD.
+
+Still on the server, navigate to kubernetes/. Copy secret.yaml.example to secret.yaml and fill in the same database values used above, plus the same FLASK_SECRET_KEY, then apply it: kubectl apply -f secret.yaml.
+
+### 4. Deploy the application (on the EC2 server)
+
+On the server, from kubernetes/cloudcart-chart, run: helm install cloudcart-release . -n cloudcart. This deploys the application to the Kubernetes cluster.
+
+### 5. Configure the Jenkins pipeline (in your browser)
+
+Open http://<instance-ip>:8080 and log in with the admin username and password set in group_vars/all.yml. The cloudcart-pipeline job already exists, created automatically during server configuration, but needs two credentials added before it can build and deploy successfully: go to Manage Jenkins -> Credentials -> (global) -> Add Credentials, and add:
+
+ec2-ssh-key: kind SSH Username with private key, username ubuntu, private key pasted directly from your EC2 key pair file. This lets the pipeline deploy over SSH.
+
+dockerhub-credentials: kind Username with password, using a Docker Hub username and an access token (not your account password). This lets the pipeline push built images.
+
+Update the IMAGE_NAME variable near the top of ci-cd/Jenkinsfile to match your own Docker Hub username before running the pipeline.
+
+### 6. Set up monitoring (on the EC2 server)
+
+On the server, from kubernetes/, copy grafana-secret-values.yaml.example to grafana-secret-values.yaml and set a real Grafana admin password.
+
+Add the Prometheus community Helm repository: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts, then helm repo update.
+
+Install the monitoring stack: helm install prometheus-stack prometheus-community/kube-prometheus-stack -n cloudcart -f prometheus-values.yaml -f grafana-secret-values.yaml.
+
+Grafana is reachable at http://<instance-ip>:30300, logging in as admin with the password set above.
+
+### Accessing the application
+
+Once deployed, the application is reachable at http://<instance-ip>:30500/products.
 
 ## Documentation
 
