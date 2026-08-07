@@ -18,7 +18,7 @@ See docs/folder-structure.md for a full breakdown of what lives where.
 
 ## Running this yourself
 
-Everything below assumes two machines: your own local machine (where you run Terraform and Ansible), and the EC2 instance Terraform creates (where the application, Kubernetes cluster, and Jenkins actually run). Each step below states which machine it runs on.
+Everything below assumes two machines: your own local machine (where you run Terraform and Ansible), and the EC2 instance Terraform creates (where the application, Kubernetes cluster, and Jenkins actually run).
 
 ### Prerequisites (on your local machine)
 
@@ -28,37 +28,29 @@ Everything below assumes two machines: your own local machine (where you run Ter
 4. Terraform, Ansible, and the AWS CLI installed locally.
 5. Your current public IP address, for example from `curl https://checkip.amazonaws.com`, used to restrict SSH access to only you.
 
-### 1. Provision AWS infrastructure (on your local machine)
+### 1. Fill in the required configuration files (on your local machine)
 
-Navigate to `infra/terraform`. Copy `terraform.tfvars.example` to `terraform.tfvars`.
+Copy `infra/terraform/terraform.tfvars.example` to `infra/terraform/terraform.tfvars`, and set `my_ip` to your public IP in CIDR notation (e.g. `123.45.67.89/32`) and `key_pair_name` to the exact name of the EC2 key pair created above.
 
-Edit `terraform.tfvars` and set `my_ip` to your public IP in CIDR notation (e.g. `123.45.67.89/32`) and `key_pair_name` to the exact name of the EC2 key pair created above.
+Copy `docker/.env.example` to `docker/.env`, and fill in real values: a random string for `FLASK_SECRET_KEY`, and a database name, user, and password of your choice for `DB_NAME`, `DB_USER`, and `DB_PASSWORD`.
 
-Run `terraform init`, then `terraform apply`. This creates the EC2 instance and security group, and automatically writes the instance's public IP into `infra/ansible/inventory.ini`.
+Copy `infra/ansible/group_vars/all.yml.example` to `infra/ansible/group_vars/all.yml`, and set a real Jenkins admin password.
 
-### 2. Set application secrets (on your local machine, before running Ansible)
+### 2. Deploy (on your local machine)
 
-Copy `docker/.env.example` to `.env` in the `docker/` folder and fill in real values: a random string for `FLASK_SECRET_KEY`, and a database name, user, and password of your choice for `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. This must be done before the next step, since Ansible copies this file to the server and uses its values to create the Kubernetes secret and deploy the application automatically.
+Run `./scripts/deploy.sh` from the repository root. This provisions the EC2 instance and security group with Terraform, waits until the instance is reachable, then runs the Ansible playbook to install Docker, Kubernetes (k3s), Helm, and Jenkins, create the Kubernetes secret from your `.env` values, and deploy the application via Helm. This takes several minutes.
 
-### 3. Configure the server and deploy the application (run from your local machine)
+Once it completes, confirm the application deployed correctly by visiting `http://<instance-ip>:30500/products` (the script prints the exact URL at the end).
 
-Navigate to `infra/ansible`. `inventory.ini` was already generated in step 1 and points at your new instance.
+### 3. Configure the Jenkins pipeline (in your browser)
 
-Copy `group_vars/all.yml.example` to `group_vars/all.yml`, and set a real Jenkins admin password.
-
-Run `ansible-playbook -i inventory.ini playbook.yml`. This command runs on your local machine but connects to the EC2 instance over SSH and configures it: installing Docker, Kubernetes (k3s), Helm, and Jenkins; applying the base Kubernetes namespace and service; creating the Kubernetes secret from your `.env` values; and installing the application via Helm. This step takes several minutes.
-
-Once it completes, confirm the application deployed correctly by visiting `http://<instance-ip>:30500/products`.
-
-### 4. Configure the Jenkins pipeline (in your browser)
-
-Open `http://<instance-ip>:8080` and log in with the admin username and password set in step 3. The `cloudcart-pipeline` job already exists, created automatically during server configuration, and its GitHub webhook trigger is enabled by default -- but it needs one credential added before it can build and push images successfully: go to Manage Jenkins -> Credentials -> (global) -> Add Credentials, and add `dockerhub-credentials`: kind Username with password, using your Docker Hub username and the access token generated in the prerequisites (not your account password).
+Open `http://<instance-ip>:8080` and log in with the admin username and password set in step 1. The `cloudcart-pipeline` job already exists, created automatically during deployment, and its GitHub webhook trigger is enabled by default -- but it needs one credential added before it can build and push images successfully: go to Manage Jenkins -> Credentials -> (global) -> Add Credentials, and add `dockerhub-credentials`: kind Username with password, using your Docker Hub username and the access token generated in the prerequisites (not your account password).
 
 Update the `IMAGE_NAME` variable near the top of `ci-cd/Jenkinsfile` to match your own Docker Hub username and repository before running the pipeline, then commit and push that change.
 
 In your GitHub repository, go to Settings -> Webhooks -> Add webhook. Set the Payload URL to `http://<instance-ip>:8080/github-webhook/`, content type to `application/json`, and under "SSL verification" select "Disable" -- Jenkins is served over plain HTTP in this setup, not HTTPS, so GitHub would otherwise fail to deliver the webhook. Select "Just the push event", then click Add webhook. This makes Jenkins build automatically on every push to `main`.
 
-### 5. Set up monitoring (on the EC2 server)
+### 4. Set up monitoring (on the EC2 server)
 
 This step is intentionally manual rather than automated: installing the full monitoring stack alongside Jenkins, k3s, Docker, and Postgres is resource-intensive on a `t3.small` instance, and automating it caused real instability during development (see docs/challenges.md). Expect the instance to be under heavy load for a few minutes after installation.
 
@@ -76,7 +68,7 @@ Once deployed, the application is reachable at `http://<instance-ip>:30500/produ
 
 ### Running locally instead (no AWS required)
 
-To run the application and database locally with Docker Compose, without touching AWS at all: complete step 2 above (set up `docker/.env`), then run `./scripts/run-local.sh`. The application will be reachable at `http://localhost:5000/products`.
+To run the application and database locally with Docker Compose, without touching AWS at all: complete step 1 above for `docker/.env` only, then run `./scripts/run-local.sh`. The application will be reachable at `http://localhost:5000/products`.
 
 ### Tearing down
 
