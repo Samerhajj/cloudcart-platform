@@ -41,6 +41,12 @@
     name: jenkins
     state: present
 
+- name: Add jenkins user to ubuntu group for repository access
+  user:
+    name: jenkins
+    groups: ubuntu
+    append: yes
+
 - name: Create .kube directory for jenkins user
   file:
     path: /home/jenkins/.kube

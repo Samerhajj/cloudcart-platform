@@ -9,22 +9,22 @@
   become_user: ubuntu
   git:
     repo: "https://github.com/Samerhajj/cloudcart-platform.git"
-    dest: /home/ubuntu/cloudcart-platform
+    dest: /opt/cloudcart-platform
     version: main
     force: yes
 
 - name: Copy .env file to server
   copy:
     src: "{{ playbook_dir }}/../../docker/.env"
-    dest: /home/ubuntu/cloudcart-platform/docker/.env
+    dest: /opt/cloudcart-platform/docker/.env
     owner: ubuntu
     group: ubuntu
     mode: '0600'
 
 - name: Start database with Docker Compose
-  command: docker compose -f /home/ubuntu/cloudcart-platform/docker/docker-compose.yml up -d
+  command: docker compose -f /opt/cloudcart-platform/docker/docker-compose.yml up -d
   args:
-    chdir: /home/ubuntu/cloudcart-platform/docker
+    chdir: /opt/cloudcart-platform/docker
 
 - name: Check if Kubernetes secret already exists
   become: yes
@@ -39,7 +39,7 @@
   become_user: ubuntu
   shell: |
     set -a
-    source /home/ubuntu/cloudcart-platform/docker/.env
+    source /opt/cloudcart-platform/docker/.env
     set +a
     k3s kubectl create secret generic cloudcart-secrets -n cloudcart \
       --from-literal=flask-secret-key="$FLASK_SECRET_KEY" \
@@ -60,5 +60,5 @@
 - name: Install CloudCart application via Helm
   become: yes
   become_user: ubuntu
-  command: helm install cloudcart-release /home/ubuntu/cloudcart-platform/kubernetes/cloudcart-chart -n cloudcart
+  command: helm install cloudcart-release /opt/cloudcart-platform/kubernetes/cloudcart-chart -n cloudcart
   when: "'cloudcart-release' not in helm_releases.stdout"
