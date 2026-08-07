@@ -1,3 +1,4 @@
+
 variable "aws_region" {
   description = "AWS region to deploy CloudCart infrastructure into"
   type        = string
@@ -18,11 +19,6 @@ variable "instance_type" {
 
 variable "my_ip" {
   description = "Your public IP address in CIDR notation, allowed to SSH into the instance"
-  type        = string
-}
-
-variable "jenkins_ip" {
-  description = "Your jenkins_ip IP address in CIDR notation, allowed to SSH into the instance"
   type        = string
 }
 

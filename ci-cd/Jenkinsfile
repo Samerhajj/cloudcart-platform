@@ -61,18 +61,12 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sshagent(credentials: ['ec2-ssh-key']) {
-                    sh '''
-                        echo "DEPLOY_USER=$DEPLOY_USER"
-                        echo "DEPLOY_HOST=$DEPLOY_HOST"
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
-                            cd /home/ubuntu/cloudcart-platform &&
-                            git pull origin main &&
-                            helm upgrade cloudcart-release kubernetes/cloudcart-chart -n cloudcart &&
-                            kubectl rollout status deployment/cloudcart-app -n cloudcart
-                        "
-                    '''
-                }
+                sh '''
+                    cd /home/ubuntu/cloudcart-platform
+                    git pull origin main
+                    helm upgrade cloudcart-release kubernetes/cloudcart-chart -n cloudcart
+                    kubectl rollout status deployment/cloudcart-app -n cloudcart
+                '''
             }
         }
     }
