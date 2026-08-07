@@ -12,3 +12,11 @@ output "ssh_connection_command" {
   description = "Command to SSH into the instance"
   value       = "ssh -i ~/.ssh/aws-keys/cloudcart-keypair.pem ubuntu@${aws_instance.cloudcart_app.public_ip}"
 }
+
+resource "local_file" "ansible_inventory" {
+  filename = "${path.module}/../ansible/inventory.ini"
+  content  = <<-EOT
+    [cloudcart_servers]
+    ${aws_instance.cloudcart_app.public_ip} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/aws-keys/${var.key_pair_name}.pem
+  EOT
+}

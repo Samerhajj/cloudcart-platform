@@ -26,7 +26,7 @@ Copy infra/terraform/terraform.tfvars.example to terraform.tfvars and fill in yo
 
 ### 2. Server configuration and deployment
 
-Update infra/ansible/inventory.ini with the IP from step 1. Copy group_vars/all.yml.example to group_vars/all.yml and set a real Jenkins admin password. Run ansible-playbook -i inventory.ini playbook.yml. This installs Docker, Kubernetes (k3s), Helm, and Jenkins, and applies the base Kubernetes namespace and service.
+Terraform automatically writes the instance's public IP into infra/ansible/inventory.ini as part of terraform apply, so no manual editing is needed. Copy group_vars/all.yml.example to group_vars/all.yml and set a real Jenkins admin password. Run ansible-playbook -i inventory.ini playbook.yml. This installs Docker, Kubernetes (k3s), Helm, and Jenkins, and applies the base Kubernetes namespace and service.
 
 ### 3. Application secrets
 
