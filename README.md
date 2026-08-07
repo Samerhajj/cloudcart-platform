@@ -44,17 +44,14 @@ Copy group_vars/all.yml.example to group_vars/all.yml, and set a real Jenkins ad
 
 Run ansible-playbook -i inventory.ini playbook.yml. This command runs on your local machine but connects to the EC2 instance over SSH and configures it: installing Docker, Kubernetes (k3s), Helm, and Jenkins, and applying the base Kubernetes namespace and service. This step takes several minutes.
 
-### 3. Set application secrets (on the EC2 server)
+### 3. Set application secrets (on your local machine, before running Ansible)
 
-From this point on, connect to the EC2 instance itself: ssh -i ~/.ssh/aws-keys/your-keypair.pem ubuntu@<instance-ip>. The repository has already been cloned there by the previous step, at /home/ubuntu/cloudcart-platform.
+Copy docker/.env.example to .env in the docker/ folder and fill in real values: a random string for FLASK_SECRET_KEY, and a database name, user, and password of your choice for DB_NAME, DB_USER, and DB_PASSWORD. This must be done before running ansible-playbook in step 2, since Ansible copies this file to the server and uses its values to create the Kubernetes secret and deploy the application automatically.
 
-On the server, navigate to docker/. Copy .env.example to .env and fill in real values: a random string for FLASK_SECRET_KEY, and a database name, user, and password of your choice for DB_NAME, DB_USER, and DB_PASSWORD.
+### 4. Application deployment
 
-Still on the server, navigate to kubernetes/. Copy secret.yaml.example to secret.yaml and fill in the same database values used above, plus the same FLASK_SECRET_KEY, then apply it: kubectl apply -f secret.yaml.
+No manual action needed here: the ansible-playbook run in step 2 already created the Kubernetes secret from the .env values and installed the application via Helm. Confirm it deployed correctly by checking http://<instance-ip>:30500/products once step 2 completes.
 
-### 4. Deploy the application (on the EC2 server)
-
-On the server, from kubernetes/cloudcart-chart, run: helm install cloudcart-release . -n cloudcart. This deploys the application to the Kubernetes cluster.
 
 ### 5. Configure the Jenkins pipeline (in your browser)
 
@@ -65,6 +62,10 @@ ec2-ssh-key: kind SSH Username with private key, username ubuntu, private key pa
 dockerhub-credentials: kind Username with password, using a Docker Hub username and an access token (not your account password). This lets the pipeline push built images.
 
 Update the IMAGE_NAME variable near the top of ci-cd/Jenkinsfile to match your own Docker Hub username before running the pipeline.
+
+Update the DEPLOY_HOST parameter's defaultValue in ci-cd/Jenkinsfile to match your instance's current public IP. This value is not automatically kept in sync: if the instance is ever stopped and started again, or destroyed and recreated, its public IP changes and this value must be updated manually, either by editing the Jenkinsfile or by entering the correct IP in the Build with Parameters form each time the pipeline is triggered.
+
+In your GitHub repository, go to Settings -> Webhooks -> Add webhook. Set the Payload URL to http://<instance-ip>:8080/github-webhook/, content type to application/json, and select "Just the push event". This makes Jenkins build automatically on every push to main, rather than requiring a manual trigger.
 
 ### 6. Set up monitoring (on the EC2 server)
 
