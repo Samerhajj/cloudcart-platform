@@ -10,11 +10,11 @@ A Flask application (product catalog, cart, checkout) provisioned and deployed e
 
 GitHub push leads to Jenkins building, testing, and pushing the image to Docker Hub, then running a Helm upgrade against the k3s cluster, which connects to Postgres running via Docker on the same host.
 
-See docs/architecture.md for the full diagram and explanation.
+See [docs/architecture.md](docs/architecture.md) for the full diagram and explanation.
 
 ## Repository structure
 
-See docs/folder-structure.md for a full breakdown of what lives where.
+See [docs/folder-structure.md](docs/folder-structure.md) for a full breakdown of what lives where.
 
 ## Running this yourself
 
@@ -38,7 +38,7 @@ Copy `infra/ansible/group_vars/all.yml.example` to `infra/ansible/group_vars/all
 
 ### 2. Deploy (on your local machine)
 
-Run `./scripts/deploy.sh` from the repository root. This provisions the EC2 instance and security group with Terraform, waits until the instance is reachable, then runs the Ansible playbook to install Docker, Kubernetes (k3s), Helm, and Jenkins, create the Kubernetes secret from your `.env` values, and deploy the application via Helm. This takes several minutes.
+Run [scripts/deploy.sh](scripts/deploy.sh) from the repository root. This provisions the EC2 instance and security group with Terraform, waits until the instance is reachable, then runs the Ansible playbook to install Docker, Kubernetes (k3s), Helm, and Jenkins, create the Kubernetes secret from your `.env` values, and deploy the application via Helm. This takes several minutes.
 
 Once it completes, confirm the application deployed correctly by visiting `http://<instance-ip>:30500/products` (the script prints the exact URL at the end).
 
@@ -52,7 +52,7 @@ In your GitHub repository, go to Settings -> Webhooks -> Add webhook. Set the Pa
 
 ### 4. Set up monitoring (on the EC2 server)
 
-This step is intentionally manual rather than automated: installing the full monitoring stack alongside Jenkins, k3s, Docker, and Postgres is resource-intensive on a `t3.small` instance, and automating it caused real instability during development (see docs/challenges.md). Expect the instance to be under heavy load for a few minutes after installation.
+This step is intentionally manual rather than automated: installing the full monitoring stack alongside Jenkins, k3s, Docker, and Postgres is resource-intensive on a `t3.small` instance, and automating it caused real instability during development (see [docs/challenges.md](docs/challenges.md)). Expect the instance to be under heavy load for a few minutes after installation.
 
 SSH into the instance. From `kubernetes/`, copy `grafana-secret-values.yaml.example` to `grafana-secret-values.yaml` and set a real Grafana admin password.
 
@@ -68,11 +68,11 @@ Once deployed, the application is reachable at `http://<instance-ip>:30500/produ
 
 ### Running locally instead (no AWS required)
 
-To run the application and database locally with Docker Compose, without touching AWS at all: complete step 1 above for `docker/.env` only, then run `./scripts/run-local.sh`. The application will be reachable at `http://localhost:5000/products`.
+To run the application and database locally with Docker Compose, without touching AWS at all: complete step 1 above for `docker/.env` only, then run [scripts/run-local.sh](scripts/run-local.sh). The application will be reachable at `http://localhost:5000/products`.
 
 ### Tearing down
 
-To destroy all AWS resources created by this project, run `./scripts/destroy.sh` from the repository root. It will show exactly what will be destroyed and require typed confirmation before proceeding.
+To destroy all AWS resources created by this project, run [scripts/destroy.sh](scripts/destroy.sh) from the repository root. It will show exactly what will be destroyed and require typed confirmation before proceeding.
 
 ## Documentation
 
